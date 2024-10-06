@@ -41,7 +41,6 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
-            margin-bottom: 10px;
         }
         button:hover {
             background-color: #45a049;
@@ -83,42 +82,13 @@
     <div class="input-group">
         <label for="features">Características (separadas por comas):</label>
         <input type="text" id="features" placeholder="Ej: 128GB, 5G, Cámara 64MP">
+        <button onclick="autoCompleteFeatures()">Autocompletar características</button>
     </div>
-    <button onclick="autoCompleteFeatures()">Autocompletar Características</button>
     <button onclick="generateTitles()">Generar el título</button>
     <div id="results"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
     <script>
-        async function autoCompleteFeatures() {
-            const brand = document.getElementById('brand').value;
-            const model = document.getElementById('model').value;
-            const productType = document.getElementById('productType').value;
-
-            if (!brand && !model && !productType) {
-                alert('Por favor, ingrese al menos la marca, el modelo o el tipo de producto para autocompletar las características.');
-                return;
-            }
-
-            const prompt = `Genera una lista con todas las características del ${brand} ${model} ${productType} en una sola línea, separadas por comas. Incluye especificaciones como pantalla, cámara, batería, procesador, sistema operativo, almacenamiento, conectividad, diseño y otras características relevantes`;
-
-            try {
-                const response = await axios.post('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyB7aaiVaYHWouFejdZWe4jzAQ-Nb5Kbsxs', {
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }]
-                });
-
-                const features = response.data.candidates[0].content.parts[0].text.trim();
-                document.getElementById('features').value = features;
-            } catch (error) {
-                console.error('Error al generar características:', error);
-                alert('Hubo un error al generar las características. Por favor, intenta de nuevo.');
-            }
-        }
-
         async function generateTitles() {
             const brand = document.getElementById('brand').value;
             const productType = document.getElementById('productType').value;
@@ -137,7 +107,7 @@
             - Características: ${features}
 
             Reglas:
-            - Cada título debe tener entre 55 y 60 caracteres, ni más ni menos.
+            - Cada título debe tener entre 55 y 60 caracteres, inclusivo.
             - Usar la menor cantidad posible de nexos y artículos.
             - NO usar NINGÚN signo de puntuación, incluyendo comas (,), dos puntos (:), punto y coma (;), punto (.), guiones medios (-) o cualquier otro.
             - Los títulos deben ser diferentes entre sí.
@@ -162,7 +132,7 @@
                     .filter(title => title.trim())
                     .map(title => title.replace(/^Título \d+: /, '').trim())
                     .map(cleanTitle)
-                    .map(adjustTitleLength);
+                    .filter(title => title.length >= 55 && title.length <= 60);
                 
                 displayResults(titles);
             } catch (error) {
@@ -171,20 +141,37 @@
             }
         }
 
+        async function autoCompleteFeatures() {
+            const brand = document.getElementById('brand').value;
+            const model = document.getElementById('model').value;
+
+            if (!brand && !model) {
+                alert('Por favor, ingrese al menos la marca o el modelo del producto.');
+                return;
+            }
+
+            const prompt = `Genera una lista con todas las características del ${brand} ${model} en una sola línea, separadas por comas.`;
+
+            try {
+                const response = await axios.post('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyB7aaiVaYHWouFejdZWe4jzAQ-Nb5Kbsxs', {
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                });
+
+                const features = response.data.candidates[0].content.parts[0].text.trim();
+                document.getElementById('features').value = features;
+            } catch (error) {
+                console.error('Error al autocompletar características:', error);
+                alert('Hubo un error al autocompletar las características. Por favor, inténtelo de nuevo.');
+            }
+        }
+
         function cleanTitle(title) {
             // Elimina todos los signos de puntuación especificados y cualquier otro signo de puntuación
             return title.replace(/[,.:;\-\s]+/g, ' ').trim();
-        }
-
-        function adjustTitleLength(title) {
-            if (title.length < 55) {
-                // Si el título es muy corto, lo rellenamos con espacios
-                return title.padEnd(55);
-            } else if (title.length > 60) {
-                // Si el título es muy largo, lo recortamos a 60 caracteres
-                return title.slice(0, 60).trim();
-            }
-            return title;
         }
 
         function displayResults(titles) {
