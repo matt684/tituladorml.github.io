@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Títulos para Mercado Libre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .title-result {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #e9e9e9;
+            border-radius: 4px;
+        }
+        .char-count {
+            float: right;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Generador de Títulos para Mercado Libre</h1>
+    <div class="input-group">
+        <label for="brand">Marca del producto (opcional):</label>
+        <input type="text" id="brand" placeholder="Ej: Samsung">
+    </div>
+    <div class="input-group">
+        <label for="productType">Tipo de producto (obligatorio):</label>
+        <input type="text" id="productType" placeholder="Ej: Smartphone" required>
+    </div>
+    <div class="input-group">
+        <label for="model">Modelo del producto (opcional):</label>
+        <input type="text" id="model" placeholder="Ej: Galaxy S21">
+    </div>
+    <div class="input-group">
+        <label for="features">Características (separadas por comas):</label>
+        <input type="text" id="features" placeholder="Ej: 128GB, 5G, Cámara 64MP">
+    </div>
+    <button onclick="autoCompleteFeatures()">Autocompletar Características</button>
+    <button onclick="generateTitles()">Generar el título</button>
+    <div id="results"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+    <script>
+        async function autoCompleteFeatures() {
+            const brand = document.getElementById('brand').value;
+            const model = document.getElementById('model').value;
+            const productType = document.getElementById('productType').value;
+
+            if (!brand && !model && !productType) {
+                alert('Por favor, ingrese al menos la marca, el modelo o el tipo de producto para autocompletar las características.');
+                return;
+            }
+
+            const prompt = `Genera una lista con todas las características del ${brand} ${model} ${productType} en una sola línea, separadas por comas. Incluye especificaciones como pantalla, cámara, batería, procesador, sistema operativo, almacenamiento, conectividad, diseño y otras características relevantes`;
+
+            try {
+                const response = await axios.post('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyB7aaiVaYHWouFejdZWe4jzAQ-Nb5Kbsxs', {
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                });
+
+                const features = response.data.candidates[0].content.parts[0].text.trim();
+                document.getElementById('features').value = features;
+            } catch (error) {
+                console.error('Error al generar características:', error);
+                alert('Hubo un error al generar las características. Por favor, intenta de nuevo.');
+            }
+        }
+
+        async function generateTitles() {
+            const brand = document.getElementById('brand').value;
+            const productType = document.getElementById('productType').value;
+            const model = document.getElementById('model').value;
+            const features = document.getElementById('features').value;
+
+            if (!productType) {
+                alert('El tipo de producto es obligatorio.');
+                return;
+            }
+
+            const prompt = `Genera al menos 2 títulos para una publicación de Mercado Libre con las siguientes características:
+            - Marca: ${brand}
+            - Tipo de producto: ${productType}
+            - Modelo: ${model}
+            - Características: ${features}
+
+            Reglas:
+            - Cada título debe tener entre 55 y 60 caracteres, ni más ni menos.
+            - Usar la menor cantidad posible de nexos y artículos.
+            - NO usar NINGÚN signo de puntuación, incluyendo comas (,), dos puntos (:), punto y coma (;), punto (.), guiones medios (-) o cualquier otro.
+            - Los títulos deben ser diferentes entre sí.
+            - Incluir solo palabras relevantes.
+
+            Formato de respuesta:
+            Título 1
+            Título 2
+            (y así sucesivamente)`;
+
+            try {
+                const response = await axios.post('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyB7aaiVaYHWouFejdZWe4jzAQ-Nb5Kbsxs', {
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                });
+
+                const titles = response.data.candidates[0].content.parts[0].text
+                    .split('\n')
+                    .filter(title => title.trim())
+                    .map(title => title.replace(/^Título \d+: /, '').trim())
+                    .map(cleanTitle)
+                    .map(adjustTitleLength);
+                
+                displayResults(titles);
+            } catch (error) {
+                console.error('Error al generar títulos:', error);
+                alert('Hubo un error al generar los títulos. Por favor, intenta de nuevo.');
+            }
+        }
+
+        function cleanTitle(title) {
+            // Elimina todos los signos de puntuación especificados y cualquier otro signo de puntuación
+            return title.replace(/[,.:;\-\s]+/g, ' ').trim();
+        }
+
+        function adjustTitleLength(title) {
+            if (title.length < 55) {
+                // Si el título es muy corto, lo rellenamos con espacios
+                return title.padEnd(55);
+            } else if (title.length > 60) {
+                // Si el título es muy largo, lo recortamos a 60 caracteres
+                return title.slice(0, 60).trim();
+            }
+            return title;
+        }
+
+        function displayResults(titles) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            titles.forEach((title) => {
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'title-result';
+                const charCount = title.length;
+                titleDiv.innerHTML = `
+                    ${title}
+                    <span class="char-count">${charCount} caracteres</span>
+                `;
+                resultsDiv.appendChild(titleDiv);
+            });
+        }
+    </script>
+</body>
+</html>
